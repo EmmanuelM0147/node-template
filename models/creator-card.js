@@ -6,7 +6,7 @@ const schemaConfig = {
   _id: { type: String },
   title: String,
   description: String,
-  slug: { type: String, unique: true },
+  slug: { type: String },
   creator_reference: String,
   links: [{ title: String, url: String }],
   service_rates: {
@@ -26,5 +26,7 @@ const modelSchema = new ModelSchema(schemaConfig, {
   versionKey: false,
   collection: modelName,
 });
+
+modelSchema.index({ slug: 1 }, { unique: true, partialFilterExpression: { deleted: null } });
 
 module.exports = DatabaseModel.model(modelName, modelSchema);

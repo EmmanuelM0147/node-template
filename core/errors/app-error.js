@@ -20,6 +20,8 @@ function appError(errorMessage, errorCode = 'ERR', options = {}) {
 
   if (statusCode) {
     error.statusCode = statusCode;
+  } else if (opts.statusCode) {
+    error.statusCode = opts.statusCode;
   }
 
   if (opts.context) {

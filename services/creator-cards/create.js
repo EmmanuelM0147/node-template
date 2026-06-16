@@ -10,8 +10,18 @@ const createSpec = `root {
   description? string<maxLength:500>
   slug? string<minLength:5|maxLength:50>
   creator_reference string<length:20>
-  links? array
-  service_rates? object
+  links[]? {
+    title string<minLength:1|maxLength:100>
+    url string<maxLength:200>
+  }
+  service_rates? {
+    currency string<enum:NGN,USD,GBP,GHS>
+    rates[] {
+      name string<minLength:3|maxLength:100>
+      description? string<maxLength:250>
+      amount number<min:1>
+    }
+  }
   status string<enum:draft,published>
   access_type? string<enum:public,private>
   access_code? string<length:6>
@@ -20,6 +30,9 @@ const createSpec = `root {
 const parsedCreateSpec = validator.parse(createSpec);
 
 const ALPHANUMERIC = 'abcdefghijklmnopqrstuvwxyz0123456789';
+const SLUG_PATTERN = /^[a-z0-9\-_]+$/;
+const ACCESS_CODE_PATTERN = /^[a-zA-Z0-9]{6}$/;
+const URL_PATTERN = /^https?:\/\//;
 
 function randomAlphanumeric(length) {
   let result = '';
@@ -41,8 +54,59 @@ async function isSlugTaken(slug) {
   return !!existing;
 }
 
+function validateFieldRules(validatedData, slugProvided) {
+  if (slugProvided && !SLUG_PATTERN.test(validatedData.slug)) {
+    throwAppError(
+      'slug must contain only letters, numbers, hyphens, and underscores',
+      'SPCL_VALIDATION',
+      { statusCode: 400 }
+    );
+  }
+
+  if (validatedData.access_code && !ACCESS_CODE_PATTERN.test(validatedData.access_code)) {
+    throwAppError('access_code must be exactly 6 alphanumeric characters', 'SPCL_VALIDATION', {
+      statusCode: 400,
+    });
+  }
+
+  if (validatedData.links) {
+    validatedData.links.forEach((link, index) => {
+      if (!URL_PATTERN.test(link.url)) {
+        throwAppError(
+          `links[${index}].url must start with http:// or https://`,
+          'SPCL_VALIDATION',
+          { statusCode: 400 }
+        );
+      }
+    });
+  }
+
+  if (validatedData.service_rates) {
+    if (!validatedData.service_rates.rates || validatedData.service_rates.rates.length === 0) {
+      throwAppError(
+        'service_rates.rates must be a non-empty array when service_rates is present',
+        'SPCL_VALIDATION',
+        { statusCode: 400 }
+      );
+    }
+
+    validatedData.service_rates.rates.forEach((rate, index) => {
+      if (!Number.isInteger(rate.amount)) {
+        throwAppError(
+          `service_rates.rates[${index}].amount must be a positive integer`,
+          'SPCL_VALIDATION',
+          { statusCode: 400 }
+        );
+      }
+    });
+  }
+}
+
 async function create(serviceData) {
   const validatedData = validator.validate(serviceData, parsedCreateSpec);
+
+  const slugProvided = serviceData.slug != null && serviceData.slug !== '';
+  validateFieldRules(validatedData, slugProvided);
 
   const accessType = validatedData.access_type || 'public';
   const accessCode = validatedData.access_code ?? null;
@@ -71,17 +135,12 @@ async function create(serviceData) {
     });
   }
 
-  const slugProvided = serviceData.slug != null && serviceData.slug !== '';
   let slug;
 
   if (!slugProvided) {
     slug = slugifyTitle(validatedData.title);
 
-    if (slug.length < 5) {
-      slug = `${slug}-${randomAlphanumeric(6)}`;
-    }
-
-    if (await isSlugTaken(slug)) {
+    if (slug.length < 5 || (await isSlugTaken(slug))) {
       slug = `${slug}-${randomAlphanumeric(6)}`;
     }
   } else {

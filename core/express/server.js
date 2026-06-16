@@ -242,12 +242,24 @@ function Server(serverConfig = {}) {
         appLogger.error(requestLog, `error: ${statusCode} ${method} ${path}`);
 
         responseComponents.statusCode = statusCode;
-        responseComponents.body.status = 'error';
-        responseComponents.body.message = error.isApplicationError
-          ? error.message
-          : 'Some error occured.';
-        responseComponents.body.errors = error.details || undefined;
-        responseComponents.body.data = error.context;
+
+        const businessErrorCodes = ['SL02', 'AC01', 'AC05', 'NF01', 'NF02', 'AC03', 'AC04'];
+
+        if (error.isApplicationError && businessErrorCodes.includes(error.errorCode)) {
+          responseComponents.body.status = 'error';
+          responseComponents.body.message = error.message;
+          responseComponents.body.code = error.errorCode;
+        } else {
+          responseComponents.body.status = 'error';
+          responseComponents.body.message = error.isApplicationError
+            ? error.message
+            : 'Some error occured.';
+          if (error.isApplicationError && error.errorCode) {
+            responseComponents.body.code = error.errorCode;
+          }
+          responseComponents.body.errors = error.details || undefined;
+          responseComponents.body.data = error.context;
+        }
 
         expressResponse.status(responseComponents.statusCode).json(responseComponents.body); // Todo: Add a callback config that can be used to handle this in a custom way.
       } finally {
