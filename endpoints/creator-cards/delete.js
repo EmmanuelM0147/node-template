@@ -1,0 +1,26 @@
+const { createHandler } = require('@app-core/server');
+const { appLogger } = require('@app-core/logger');
+const { CreatorCardMessages } = require('@app/messages');
+const deleteCreatorCardService = require('@app/services/creator-cards/delete');
+
+module.exports = createHandler({
+  path: '/creator-cards/:slug',
+  method: 'delete',
+  middlewares: [],
+  async onResponseEnd(rc, rs) {
+    appLogger.info({ requestContext: rc, response: rs }, 'delete-creator-card-request-completed');
+  },
+  async handler(rc, helpers) {
+    const payload = {
+      slug: rc.params.slug,
+      ...rc.body,
+    };
+
+    const response = await deleteCreatorCardService(payload);
+    return {
+      status: helpers.http_statuses.HTTP_200_OK,
+      message: CreatorCardMessages.CARD_DELETED,
+      data: response,
+    };
+  },
+});

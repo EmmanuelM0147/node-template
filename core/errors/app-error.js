@@ -1,20 +1,33 @@
 /**
  * Throw an app error
- * @param {String} errorMessage
+ * @param {String|{message: String, code: String, statusCode: Number, context: any, details: any}} errorMessage
  * @param {String} [errorCode]
  * @param {{context:any, details:any}} [options]
  */
 function appError(errorMessage, errorCode = 'ERR', options = {}) {
-  const error = new Error(errorMessage);
-  error.isApplicationError = true;
-  error.errorCode = errorCode;
+  let message = errorMessage;
+  let code = errorCode;
+  let opts = options;
+  let statusCode;
 
-  if (options.context) {
-    error.context = options.context;
+  if (message && typeof message === 'object') {
+    ({ message, code, statusCode, ...opts } = errorMessage);
   }
 
-  if (options.details) {
-    error.details = options.details;
+  const error = new Error(message);
+  error.isApplicationError = true;
+  error.errorCode = code;
+
+  if (statusCode) {
+    error.statusCode = statusCode;
+  }
+
+  if (opts.context) {
+    error.context = opts.context;
+  }
+
+  if (opts.details) {
+    error.details = opts.details;
   }
 
   throw error;

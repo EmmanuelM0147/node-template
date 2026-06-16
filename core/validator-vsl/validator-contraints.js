@@ -275,6 +275,7 @@ module.exports = {
   startswith,
   endswith,
   isanyof,
+  enum: isanyof,
   trim,
   lowercase,
   uppercase,

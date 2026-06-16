@@ -230,7 +230,7 @@ function Server(serverConfig = {}) {
       } catch (error) {
         const statusCode = !error.isApplicationError
           ? 500
-          : errorCodeMappings[error.errorCode] || 400;
+          : error.statusCode || errorCodeMappings[error.errorCode] || 400;
 
         const requestLog = createRequestLog(expressRequest);
 
