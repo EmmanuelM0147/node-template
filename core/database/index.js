@@ -15,7 +15,10 @@ async function connectDatabase() {
   const uri = process.env.MONGODB_URI;
 
   connectionPromise = (async () => {
-    await mongoose.connect(uri);
+    await mongoose.connect(uri, {
+      serverSelectionTimeoutMS: 10000,
+      maxPoolSize: 10,
+    });
     appLogger.info({}, 'mongodb-connection-success');
 
     try {

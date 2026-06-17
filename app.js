@@ -18,6 +18,21 @@ const server = createServer({
   enableCors: true,
 });
 
+connectDatabase().catch(() => {});
+
+server.use(async (req, res, next) => {
+  try {
+    await connectDatabase();
+    next();
+  } catch (error) {
+    res.status(503).json({
+      status: 'error',
+      message: 'Database connection failed',
+      code: 'DB_UNAVAILABLE',
+    });
+  }
+});
+
 const ENDPOINT_CONFIGS = [
   {
     directory: path.join(__dirname, 'endpoints', 'onboarding'),

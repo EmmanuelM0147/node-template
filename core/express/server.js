@@ -311,6 +311,10 @@ function Server(serverConfig = {}) {
     });
   }
 
+  function use(...middleware) {
+    app.use(...middleware);
+  }
+
   function startServer() {
     registerFallbackHandlers();
     app.listen(port, () => {
@@ -323,6 +327,7 @@ function Server(serverConfig = {}) {
     addHandler,
     executeRequest,
     registerFallbackHandlers,
+    use,
     app,
   };
 }
