@@ -1,10 +1,20 @@
 const mongoose = require('mongoose');
 const { appLogger } = require('@app-core/logger');
 
+let connectionPromise;
+
 async function connectDatabase() {
+  if (mongoose.connection.readyState === 1) {
+    return mongoose.connection;
+  }
+
+  if (connectionPromise) {
+    return connectionPromise;
+  }
+
   const uri = process.env.MONGODB_URI;
 
-  try {
+  connectionPromise = (async () => {
     await mongoose.connect(uri);
     appLogger.info({}, 'mongodb-connection-success');
 
@@ -14,9 +24,21 @@ async function connectDatabase() {
     } catch (e) {
       // Index may not exist — safe to ignore
     }
+
+    return mongoose.connection;
+  })();
+
+  try {
+    return await connectionPromise;
   } catch (error) {
+    connectionPromise = null;
     appLogger.error({ error }, 'mongodb-connection-error');
-    process.exit(1);
+
+    if (!process.env.VERCEL) {
+      process.exit(1);
+    }
+
+    throw error;
   }
 }
 
