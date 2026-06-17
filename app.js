@@ -18,16 +18,31 @@ const server = createServer({
   enableCors: true,
 });
 
-connectDatabase().catch(() => {});
+if (process.env.VERCEL) {
+  connectDatabase().catch(() => {});
+}
+
+function requiresDatabase(requestPath) {
+  return requestPath.startsWith('/creator-cards');
+}
 
 server.use(async (req, res, next) => {
+  if (!requiresDatabase(req.path)) {
+    next();
+    return;
+  }
+
   try {
     await connectDatabase();
     next();
   } catch (error) {
+    const message = !process.env.MONGODB_URI
+      ? 'Database is not configured (MONGODB_URI missing)'
+      : 'Database connection failed';
+
     res.status(503).json({
       status: 'error',
-      message: 'Database connection failed',
+      message,
       code: 'DB_UNAVAILABLE',
     });
   }
