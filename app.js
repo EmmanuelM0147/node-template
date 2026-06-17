@@ -3,6 +3,7 @@
 if (!process.env.__ALREADY_BOOTSTRAPPED_ENVS) require('dotenv').config();
 
 const fs = require('fs');
+const path = require('path');
 const { createServer } = require('@app-core/server');
 const connectDatabase = require('@app-core/database');
 const { createQueue } = require('@app-core/queue');
@@ -19,25 +20,25 @@ const server = createServer({
 
 const ENDPOINT_CONFIGS = [
   {
-    path: './endpoints/onboarding/',
+    directory: path.join(__dirname, 'endpoints', 'onboarding'),
+    files: ['login.js'],
   },
   {
-    path: './endpoints/creator-cards/',
+    directory: path.join(__dirname, 'endpoints', 'creator-cards'),
+    files: ['create.js', 'get.js', 'delete.js'],
   },
 ];
 
 function logEndpointMetaData(endpointConfigs) {
   const endpointData = [];
-  const storageDirName = './endpoint-data';
+  const storageDirName = path.join(__dirname, 'endpoint-data');
   const EXEMPTED_ENDPOINTS_REGEX = /onboarding/;
 
   endpointConfigs.forEach((endpointConfig) => {
-    const { path: basePath, options } = endpointConfig;
+    const { directory: basePath, files, options } = endpointConfig;
 
-    const dirs = fs.readdirSync(basePath);
-
-    dirs.forEach((file) => {
-      const handler = require(`${basePath}${file}`);
+    files.forEach((file) => {
+      const handler = require(path.join(basePath, file));
 
       if (!EXEMPTED_ENDPOINTS_REGEX.test(basePath) && handler.middlewares?.length) {
         const entry = { method: handler.method, endpoint: handler.path };
@@ -58,20 +59,24 @@ function logEndpointMetaData(endpointConfigs) {
     fs.mkdirSync(storageDirName);
   }
 
-  fs.writeFileSync(`${storageDirName}/endpoints.json`, JSON.stringify(endpointData, null, 2), {
-    encoding: 'utf-8',
-  });
+  fs.writeFileSync(
+    path.join(storageDirName, 'endpoints.json'),
+    JSON.stringify(endpointData, null, 2),
+    {
+      encoding: 'utf-8',
+    }
+  );
 }
 
 if (canLogEndpointInformation) {
   logEndpointMetaData(ENDPOINT_CONFIGS);
 }
 
-function setupEndpointHandlers(basePath, options = {}) {
-  const dirs = fs.readdirSync(basePath);
+function setupEndpointHandlers(endpointConfig) {
+  const { directory: basePath, files, options = {} } = endpointConfig;
 
-  dirs.forEach((file) => {
-    const handler = require(`${basePath}${file}`);
+  files.forEach((file) => {
+    const handler = require(path.join(basePath, file));
 
     if (options.pathPrefix) {
       handler.path = `${options.pathPrefix}${handler.path}`;
@@ -82,7 +87,7 @@ function setupEndpointHandlers(basePath, options = {}) {
 }
 
 ENDPOINT_CONFIGS.forEach((config) => {
-  setupEndpointHandlers(config.path, config.options);
+  setupEndpointHandlers(config);
 });
 
 const { app } = server;
