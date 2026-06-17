@@ -85,6 +85,17 @@ ENDPOINT_CONFIGS.forEach((config) => {
   setupEndpointHandlers(config.path, config.options);
 });
 
+const { app } = server;
+
+if (process.env.VERCEL) {
+  server.registerFallbackHandlers();
+}
+
 connectDatabase().then(() => {
-  server.startServer();
+  // Start server only when not in Vercel serverless environment
+  if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+    server.startServer();
+  }
 });
+
+module.exports = app;

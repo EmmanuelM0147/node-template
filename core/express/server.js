@@ -285,7 +285,15 @@ function Server(serverConfig = {}) {
     return app(request, response, nextFunction);
   }
 
-  function startServer() {
+  let fallbackHandlersRegistered = false;
+
+  function registerFallbackHandlers() {
+    if (fallbackHandlersRegistered) {
+      return;
+    }
+
+    fallbackHandlersRegistered = true;
+
     app.use((_, res, __) => {
       // Global 404 Catcher
       res.status(404).json({
@@ -301,6 +309,10 @@ function Server(serverConfig = {}) {
         message: 'Some error occurred.',
       });
     });
+  }
+
+  function startServer() {
+    registerFallbackHandlers();
     app.listen(port, () => {
       appLogger(`Listening at port ${port}`);
     });
@@ -310,6 +322,8 @@ function Server(serverConfig = {}) {
     startServer,
     addHandler,
     executeRequest,
+    registerFallbackHandlers,
+    app,
   };
 }
 module.exports = Server;
